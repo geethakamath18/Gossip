@@ -13,6 +13,7 @@ open Akka.FSharp
 let system = System.create "system" <| Configuration.defaultConfig()
 let mutable flag = false
 let mutable n=0
+
 type ProcessorMessage = ProcessJob of int * string * int    
 type MasterMessage = MasterJob of int * int * int * int
 
@@ -22,10 +23,11 @@ type ActorMessageType =
     | Topo of string * int
     | Finished of int
     | Topology of string
-let mutable echoActors=new List<IActorRef>()
+
+let mutable echoActors=new List<IActorRef>() //Creating an array of actors
 let mutable m = Map.empty<int, List<int>>
-let mutable masterActor=new List<IActorRef>()
-let mutable finish = new List<int>()
+let mutable masterActor=new List<IActorRef>() //Creating array of master actors
+let mutable finish = new List<int>() // Array to maintain info about comverged nodes
 
 let random = Random()
 let echo (mailbox:Actor<_>) =
@@ -34,7 +36,7 @@ let echo (mailbox:Actor<_>) =
             let! msg = mailbox.Receive () //Recieving messages from the mailbox
             let sender = mailbox.Sender() 
             let mutable delay = 0   
-            let mutable actornumber = 0
+            // let mutable actornumber = 0
             match msg with
             |Self (num, inc) ->
                 count <- count + inc
@@ -54,7 +56,7 @@ let echo (mailbox:Actor<_>) =
                     masterActor.[0] <! Finished(num)
                 if count = 1 then 
                     printfn "node %d recived first gossip" num
-                    mailbox.Self <! Self(num, 0)
+                    mailbox.Self <! Self(num, 0) // 0?????
 
             return! loop ()
             
@@ -62,7 +64,7 @@ let echo (mailbox:Actor<_>) =
         loop ()
 let fullTopology(n: int)=
     for i in [0 .. n] do
-        let properties = string(i)
+        let properties = string(i) //For every actor, passing actor ID
         let actor = spawn system properties echo
         echoActors.Add(actor) 
     for i in [0 .. n] do
@@ -81,9 +83,9 @@ let master (mailbox: Actor<_>) =
         // printfn "%A" n
         let mutable dummy = 0
         match msg with
-        |Topo (topo, n) ->
+        |Topo (topo, n) -> //Match passed topoligy against pattern matching
                 fullTopology(n)
-                echoActors.[0] <! Self (0, 1) 
+                // echoActors.[0] <! Self (0, 1) 
         |Finished (node) ->
                 if not (finish.Contains(node)) then
                     finish.Add(node)
@@ -100,8 +102,8 @@ let main (args:string []) =
     let t=args.[2]
     let a=args.[3]
     let mast = spawn system "master" master    
-    masterActor.Add(mast)
-    masterActor.[0] <! Topo (t, n)
+    masterActor.Add(mast) // Adding master reference to lsit of master actors
+    masterActor.[0] <! Topo (t, n) //Only master Actor[0] is active
     let mutable k = 0
     while not flag do 
         k <- k+1

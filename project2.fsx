@@ -37,7 +37,7 @@ let echo (mailbox:Actor<_>) =
         let rec loop () = actor {
             let! msg = mailbox.Receive () //Recieving messages from the mailbox
             let sender = mailbox.Sender() 
-            let mutable list = new List<int>()
+            let mutable list = new List<int>() //
             let mutable delay = 0   
             let mutable actornumber = 0
             match msg with
@@ -51,9 +51,9 @@ let echo (mailbox:Actor<_>) =
                     let mutable kee = m.[num].[rand]
                     mailbox.Self <! Self(num, 0)
                         
-                    for k = 1 to 1000000 do 
+                    for k = 1 to 1000000 do //delay
                         delay <- k 
-                    if not (finish.Contains(num)) then    
+                    if not (finish.Contains(num)) then    //transmitting to rabdom neighbour
                         echoActors.[kee] <! Neigbhour(kee, 1)
                     else 
                         let mutable dummyCount = 0
@@ -68,13 +68,12 @@ let echo (mailbox:Actor<_>) =
                         //     flag <- true
             |Neigbhour (num, inc) ->
                 count <- count+inc
-                if count = 10 then
+                if count = 10 then //stopping condition
                     masterActor.[0] <! Finished(num)
-                if count = 1 then 
+                if count = 1 then //For printing
                     total <- total+1 
                     list.Add(num)
-                   
-                    printfn "node %d recived first gossip and total is %d" num total
+                    // printfn "node %d recived first gossip and total is %d" num total
                 for k = 1 to 10000 do 
                     delay <- k 
                 mailbox.Self <! Self(num, 0)
@@ -102,12 +101,12 @@ let lineTopology(k:int) =
             list.Add(i-1)
             // m <- m.Add(i, list)
         m <- m.Add(i, list)
-    for i in [0 .. m.Count-1] do
-        printfn "%d:%A" i m.[i]
+    // for i in [0 .. m.Count-1] do
+        // printfn "%d:%A" i m.[i]
     let rnd = random.Next(0,n-1)
-    printfn "random %d " rnd
+    // printfn "random %d " rnd
     time <- System.DateTime.Now.Millisecond
-    printfn "time %u" time   
+    // printfn "time %u" time   
     echoActors.[rnd] <! Neigbhour(10, 1)
 
 let fullTopology(n: int)=
@@ -121,10 +120,10 @@ let fullTopology(n: int)=
             if j <> i then 
                 l.Add(j)
         m<-m.Add(i,l)
-        printfn "%A" m
+        // printfn "%A" m
     let rnd = random.Next(0,n-1)
     time <- System.DateTime.Now.Millisecond
-    printfn "time %u" time
+    // printfn "time %u" time
     echoActors.[rnd] <! Neigbhour(n/2, 1)
 
 
@@ -135,7 +134,7 @@ let twoDgrid(k:int) =
         let properties = string(i)
         let actor = spawn system properties echo
         echoActors.Add(actor) 
-    printfn "twoDgrid %d " echoActors.Count
+    // printfn "twoDgrid %d " echoActors.Count
     for i in [0 .. n-1] do 
         let list = new List<int>()
         if i-1 >= 0 && i%sq <> 0 then 
@@ -148,12 +147,12 @@ let twoDgrid(k:int) =
             list.Add(i-sq)
         m <- m.Add(i, list)
     
-    for i in [0 .. m.Count-1] do
-        printfn "%d:%A" i m.[i]
+    // for i in [0 .. m.Count-1] do
+        // printfn "%d:%A" i m.[i]
     let rnd = random.Next(0,n-1)
-    printfn "random %d " rnd
+    // printfn "random %d " rnd
     let mutable start = n / 2
-    printfn "sumne %d" start
+    // printfn "sumne %d" start
     time <- System.DateTime.Now.Millisecond
     echoActors.[start] <! Neigbhour(start, 1)
 
@@ -165,7 +164,7 @@ let imptwoDgrid(k:int) =
         let properties = string(i)
         let actor = spawn system properties echo
         echoActors.Add(actor) 
-    printfn "twoDgrid %d " echoActors.Count
+    // printfn "twoDgrid %d " echoActors.Count
     for i in [0 .. n-1] do 
         let list = new List<int>()
         if i-1 >= 0 && i%sq <> 0 then 
@@ -180,17 +179,17 @@ let imptwoDgrid(k:int) =
         let mutable number = random.Next(n-1)
         while list.Contains(number) || number = i do
             number <- random.Next(0, n-1)
-        printfn "random :%d" number
+        // printfn "random :%d" number
         // randomlist.Add(number)
         list.Add(number)
         m <- m.Add(i, list)
     
-    for i in [0 .. m.Count-1] do
-        printfn "%d:%A" i m.[i]
+    // for i in [0 .. m.Count-1] do
+        // printfn "%d:%A" i m.[i]
     let rnd = random.Next(0,n-1)
-    printfn "random %d " rnd
+    // printfn "random %d " rnd
     let mutable start = n / 2
-    printfn "sumne %d" start
+    // printfn "sumne %d" start
     time <- System.DateTime.Now.Millisecond
     echoActors.[start] <! Neigbhour(start, 1)
 
@@ -210,7 +209,7 @@ let master (mailbox: Actor<_>) =
         |Finished (node) ->
             if not (finish.Contains(node)) then
                 finish.Add(node)
-                printfn "node %d finished and total nodes is %d" node finish.Count
+                //printfn "node %d finished and total nodes is %d" node finish.Count
             if finish.Count >= n-1 then
                 flag <- true
         return! masterloop ()
@@ -229,9 +228,9 @@ let main (args:string []) =
         k <- k+1
 
     let a = System.DateTime.Now.Millisecond
-    printfn "a = %d" a 
+    // printfn "a = %d" a 
     let b = System.DateTime.Now.Millisecond - time 
-    printfn "%d" time
+    // printfn "%d" time
 
     0
 let args = fsi.CommandLineArgs 
