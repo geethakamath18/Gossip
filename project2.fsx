@@ -9,16 +9,25 @@ open Akka.FSharp
 open Akka.TestKit
 open System.Collections.Generic
 open Akka.FSharp
-
+open System.Diagnostics
 let system = System.create "system" <| Configuration.defaultConfig()
 let mutable flag = false
 let mutable n=0
 let mutable total = 0
 let mutable limit = true
 let mutable awake = 0
-let mutable time = 0
-type ProcessorMessage = ProcessJob of int * string * int    
-type MasterMessage = MasterJob of int * int * int * int
+let mutable time =  System.Diagnostics.Stopwatch()
+
+let mutable waittime = 0
+
+
+let wait() = 
+    for i = 1 to 100000 do 
+        waittime <- waittime+1 
+let doublewait() = 
+    for i = 1 to 10000 do 
+        for j = 1 to 100 do 
+            waittime <- waittime+1
 
 type ActorMessageType = 
     | Neigbhour of int * int 
@@ -26,12 +35,14 @@ type ActorMessageType =
     | Topo of string * int
     | Finished of int
     | Topology of string
+
 let mutable echoActors=new List<IActorRef>()
 let mutable m = Map.empty<int, List<int>>
 let mutable masterActor=new List<IActorRef>()
 let mutable finish = new List<int>()
-
+let mutable heard = new List<int>()
 let random = Random()
+
 let echo (mailbox:Actor<_>) =
         let mutable count=0
         let rec loop () = actor {
@@ -51,31 +62,31 @@ let echo (mailbox:Actor<_>) =
                     let mutable kee = m.[num].[rand]
                     mailbox.Self <! Self(num, 0)
                         
-                    for k = 1 to 1000000 do 
+                    for k = 1 to 10000 do 
                         delay <- k 
                     if not (finish.Contains(num)) then    
                         echoActors.[kee] <! Neigbhour(kee, 1)
                     else 
-                        let mutable dummyCount = 0
-                        for i = 0 to m.[num].Count - 1 do 
-                            if finish.Contains(m.[num].[i]) then
-                                dummyCount <- dummyCount + 1 
-                        if dummyCount = m.[num].Count then 
-                            flag <- true 
-                        // awake <- awake + 1
-                        // printfn "awake %d" awake
-                        // if awake >= n then 
-                        //     flag <- true
+                        let mutable foundNeibhour = false
+                        for i = 0 to heard.Count - 1 do 
+                            if not (finish.Contains(heard.[i])) then
+                                foundNeibhour <- true
+                                echoActors.[heard.[i]] <! Neigbhour(heard.[i], 1)
+                        while finish.Contains(rand) && not foundNeibhour do
+                            rand <- random.Next(0,n)
+                        if not foundNeibhour then
+                            echoActors.[rand] <! Neigbhour(rand, 1)
+     
             |Neigbhour (num, inc) ->
                 count <- count+inc
-                if count = 10 then
+                if count = 5 then
                     masterActor.[0] <! Finished(num)
                 if count = 1 then 
                     total <- total+1 
-                    list.Add(num)
+                    heard.Add(num)
                    
-                    printfn "node %d recived first gossip and total is %d" num total
-                for k = 1 to 10000 do 
+                //    printfn "node %d recived first gossip and total is %d" num total
+                for k = 1 to 1000 do 
                     delay <- k 
                 mailbox.Self <! Self(num, 0)
 
@@ -102,14 +113,16 @@ let lineTopology(k:int) =
             list.Add(i-1)
             // m <- m.Add(i, list)
         m <- m.Add(i, list)
-    for i in [0 .. m.Count-1] do
-        printfn "%d:%A" i m.[i]
+    // for i in [0 .. m.Count-1] do
+    //     printfn "%d:%A" i m.[i]
     let rnd = random.Next(0,n-1)
     printfn "random %d " rnd
-    time <- System.DateTime.Now.Millisecond
-    printfn "time %u" time   
+    // time <- System.DateTime.Now.Millisecond
+    // printfn "time %u" time   
+    time <- Stopwatch.StartNew()
     echoActors.[rnd] <! Neigbhour(10, 1)
 
+    echoActors.[rnd] <! Neigbhour(9, 1)
 let fullTopology(n: int)=
     for i in [0 .. n] do
         let properties = string(i)
@@ -121,10 +134,11 @@ let fullTopology(n: int)=
             if j <> i then 
                 l.Add(j)
         m<-m.Add(i,l)
-        printfn "%A" m
+        // printfn "%A" m
     let rnd = random.Next(0,n-1)
-    time <- System.DateTime.Now.Millisecond
-    printfn "time %u" time
+    // time <- System.DateTime.Now.Second
+    time <- Stopwatch.StartNew()
+    // printfn "time %u" time
     echoActors.[rnd] <! Neigbhour(n/2, 1)
 
 
@@ -135,7 +149,7 @@ let twoDgrid(k:int) =
         let properties = string(i)
         let actor = spawn system properties echo
         echoActors.Add(actor) 
-    printfn "twoDgrid %d " echoActors.Count
+    // printfn "twoDgrid %d " echoActors.Count
     for i in [0 .. n-1] do 
         let list = new List<int>()
         if i-1 >= 0 && i%sq <> 0 then 
@@ -151,11 +165,12 @@ let twoDgrid(k:int) =
     for i in [0 .. m.Count-1] do
         printfn "%d:%A" i m.[i]
     let rnd = random.Next(0,n-1)
-    printfn "random %d " rnd
-    let mutable start = n / 2
-    printfn "sumne %d" start
-    time <- System.DateTime.Now.Millisecond
-    echoActors.[start] <! Neigbhour(start, 1)
+    // printfn "random %d " rnd
+    // let mutable start = n / 2
+    // printfn "sumne %d" start
+    // time <- System.DateTime.Now.Millisecond
+    time <- Stopwatch.StartNew()
+    echoActors.[rnd] <! Neigbhour(rnd, 1)
 
 let imptwoDgrid(k:int) = 
     let sq = ceil(sqrt(float(k))) |> int
@@ -165,7 +180,7 @@ let imptwoDgrid(k:int) =
         let properties = string(i)
         let actor = spawn system properties echo
         echoActors.Add(actor) 
-    printfn "twoDgrid %d " echoActors.Count
+    // printfn "twoDgrid %d " echoActors.Count
     for i in [0 .. n-1] do 
         let list = new List<int>()
         if i-1 >= 0 && i%sq <> 0 then 
@@ -180,19 +195,21 @@ let imptwoDgrid(k:int) =
         let mutable number = random.Next(n-1)
         while list.Contains(number) || number = i do
             number <- random.Next(0, n-1)
-        printfn "random :%d" number
+        // printfn "random :%d" number
         // randomlist.Add(number)
+        
         list.Add(number)
         m <- m.Add(i, list)
     
     for i in [0 .. m.Count-1] do
         printfn "%d:%A" i m.[i]
     let rnd = random.Next(0,n-1)
-    printfn "random %d " rnd
-    let mutable start = n / 2
-    printfn "sumne %d" start
-    time <- System.DateTime.Now.Millisecond
-    echoActors.[start] <! Neigbhour(start, 1)
+    // printfn "random %d " rnd
+    // let mutable start = n / 2
+    // printfn "sumne %d" start
+    // time <- System.DateTime.Now.Second
+    time <- Stopwatch.StartNew()
+    echoActors.[rnd] <! Neigbhour(rnd, 1)
 
 
 let master (mailbox: Actor<_>) = 
@@ -210,8 +227,8 @@ let master (mailbox: Actor<_>) =
         |Finished (node) ->
             if not (finish.Contains(node)) then
                 finish.Add(node)
-                printfn "node %d finished and total nodes is %d" node finish.Count
-            if finish.Count >= n-1 then
+                // printfn "node %d finished and total nodes is %d" node finish.Count
+            if finish.Count >= n-2 then
                 flag <- true
         return! masterloop ()
     }      
@@ -227,12 +244,13 @@ let main (args:string []) =
     let mutable k = 0
     while not flag do 
         k <- k+1
+    let mutable delay = 0
 
-    let a = System.DateTime.Now.Millisecond
-    printfn "a = %d" a 
-    let b = System.DateTime.Now.Millisecond - time 
-    printfn "%d" time
+    for k = 1 to 10000000 do 
+        delay <- k 
 
+    time.Stop()
+    printfn "Time taken for %A topology to converge is %f" t time.Elapsed.TotalMilliseconds
     0
 let args = fsi.CommandLineArgs 
 match args.Length with //Checking number of parameters
